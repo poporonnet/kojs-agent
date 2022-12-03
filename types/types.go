@@ -1,4 +1,4 @@
-package api
+package types
 
 type StartExecRequest struct {
 	SubmissionID string `json:"submissionID"`
