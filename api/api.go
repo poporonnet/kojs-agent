@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/mct-joken/jkojs-agent/types"
 )
 
 func StartServer() {
@@ -18,11 +19,11 @@ func StartServer() {
 }
 
 func handler(c echo.Context) error {
-	req := StartExecRequest{}
+	req := types.StartExecRequest{}
 	err := c.Bind(&req)
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad request")
 	}
-	res := StartExecResponse{}
+	res := types.StartExecResponse{}
 	return c.JSON(http.StatusAccepted, res)
 }

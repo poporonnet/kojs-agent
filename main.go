@@ -1,7 +1,11 @@
 package main
 
-import "github.com/mct-joken/jkojs-agent/api"
+import (
+	"github.com/mct-joken/jkojs-agent/docker"
+	"github.com/mct-joken/jkojs-agent/types"
+)
 
 func main() {
-	api.StartServer()
+	docker.Exec(types.StartExecRequest{})
+	// api.StartServer()
 }
