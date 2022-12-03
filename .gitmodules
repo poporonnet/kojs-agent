@@ -1,0 +1,3 @@
+[submodule "jkojs-worker"]
+	path = jkojs-worker
+	url = https://github.com/mct-joken/jkojs-worker
