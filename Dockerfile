@@ -14,12 +14,9 @@ FROM ubuntu:20.04 AS run
 
 ENV DEBIAN_FRONTEND nointeractive
 
-RUN apt-get update && apt-get install -y  build-essential gcc clang --no-install-recommends && mkdir /work && chmod 777 /work
-RUN mkdir /built && chmod 777 /built && touch out.json && chmod 666 out.json
+RUN apt-get update && apt-get install -y  build-essential gcc clang --no-install-recommends && mkdir /work && chmod 777 /work && mkdir /built && chmod 777 /built && touch out.json && chmod 666 out.json
 
 COPY --from=build /jkworker /jkworker
-COPY  ./test ./test
-COPY  ./case ./case
 
 RUN useradd worker
 USER worker
