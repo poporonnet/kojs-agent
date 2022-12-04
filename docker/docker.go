@@ -122,6 +122,17 @@ func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Bu
 		lib.Logger.Sugar().Errorf("コンテナの起動に失敗しました: %v", err.Error())
 		panic(err)
 	}
+	defer func() {
+		err = dCli.c.ContainerRemove(ctx, dCli.container.ID, types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+			RemoveLinks:   false,
+			Force:         true,
+		})
+		if err != nil {
+			return
+			// ToDo: ERR-LOG吐く
+		}
+	}()
 
 	statusCh, errCh := dCli.c.ContainerWait(ctx, dCli.container.ID, container.WaitConditionNotRunning)
 
@@ -148,16 +159,6 @@ func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Bu
 	if err != nil {
 		lib.Logger.Sugar().Errorf("JSONのパースに失敗: %v", err.Error())
 		return err
-	}
-
-	err = dCli.c.ContainerRemove(ctx, dCli.container.ID, types.ContainerRemoveOptions{
-		RemoveVolumes: true,
-		RemoveLinks:   false,
-		Force:         true,
-	})
-	if err != nil {
-		return err
-		// ToDo: ERR-LOG吐く
 	}
 
 	return nil
