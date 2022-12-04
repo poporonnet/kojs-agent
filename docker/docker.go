@@ -1,7 +1,9 @@
 package docker
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"strconv"
@@ -10,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/mct-joken/jkojs-agent/lib"
 	jkojsTypes "github.com/mct-joken/jkojs-agent/types"
 )
 
@@ -27,28 +30,42 @@ func newDockerClient() cli {
 	return cli{c: nclient}
 }
 
-func Exec(arg jkojsTypes.StartExecRequest) {
+func Exec(req jkojsTypes.StartExecRequest, res *jkojsTypes.StartExecResponse) {
 	c := newDockerClient()
 
-	decodeSourceCode(&arg)
-	c.containerCreate()
-	c.containerStart(arg)
+	decodeSourceCode(&req)
+
+	c.containerCreate(req)
+
+	cfg := preparePacking(req)
+	tarFile, err := packSourceAndCases(cfg)
+	if err != nil {
+		// ToDo: エラーログ
+		lib.Logger.Sugar().Errorf("tarファイルに纏められませんでした: %s", err.Error())
+		return
+	}
+
+	err = c.containerStart(res, tarFile)
+	if err != nil {
+		lib.Logger.Sugar().Errorf("コンテナ起動に失敗: %v", err.Error())
+		return
+	}
 }
 
 /*
 	方針:
 	1. コードをデコード ok
 	2. コンテナ作成 ok
-	3. コンテナに送るためのファイル類の準備 todo
-	4. tarにまとめる todo
-	5. コンテナに送る todo
+	3. コンテナに送るためのファイル類の準備 ok
+	4. tarにまとめる ok
+	5. コンテナに送る ok
 	6. コンテナを起動 ok
 	7. コンテナのログ取る -> ログからは実行結果取らない ok
 	8. コンテナからワーカーが吐いたファイルを引っ張ってくる ok
 	9. 終わったらコンテナを削除 ok
 */
 
-func (dCli *cli) containerCreate() error {
+func (dCli *cli) containerCreate(arg jkojsTypes.StartExecRequest) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
@@ -57,10 +74,11 @@ func (dCli *cli) containerCreate() error {
 	PidsLimit := int64(512)
 
 	res, err := dCli.c.ContainerCreate(ctx, &container.Config{
-		Image:           "1e",
-		NetworkDisabled: true,                                                       // ネットワークを切る
-		Cmd:             []string{"/jkworker", "-lang", "Clang++", "-id", "112233"}, // 実行する時のコマンド
-		Tty:             false,                                                      // Falseにしておく
+		Image:           "24abd",
+		NetworkDisabled: true, // ネットワークを切る
+		// Cmd:             []string{"tail", "-f", "/dev/null"},
+		Cmd: []string{"/jkworker", "-lang", arg.Lang, "-id", arg.ProblemID}, // 実行する時のコマンド
+		Tty: false,                                                          // Falseにしておく
 	}, &container.HostConfig{
 		AutoRemove:  false,  // これをtrueにすると実行結果が取れなくなる
 		NetworkMode: "none", // ネットワークにつながらないようにする
@@ -88,12 +106,20 @@ func (dCli *cli) containerCreate() error {
 	return nil
 }
 
-func (dCli cli) containerStart(arg jkojsTypes.StartExecRequest) error {
+func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Buffer) error {
+	// コンテナにファイルを送る
+	err := dCli.c.CopyToContainer(context.Background(), dCli.container.ID, "/", &codes, types.CopyToContainerOptions{})
+	if err != nil {
+		lib.Logger.Sugar().Errorf("コンテナにファイルを送れませんでした: %v", err.Error())
+		return err
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	// ToDo: ここのオプションをちゃんと指定する
 	if err := dCli.c.ContainerStart(ctx, dCli.container.ID, types.ContainerStartOptions{}); err != nil {
+		lib.Logger.Sugar().Errorf("コンテナの起動に失敗しました: %v", err.Error())
 		panic(err)
 	}
 
@@ -102,6 +128,7 @@ func (dCli cli) containerStart(arg jkojsTypes.StartExecRequest) error {
 	select {
 	case err := <-errCh:
 		if err != nil {
+			lib.Logger.Sugar().Errorf("コンテナ実行中にエラーが発生しました: %v", err.Error())
 			return err
 		}
 	case <-statusCh:
@@ -117,11 +144,21 @@ func (dCli cli) containerStart(arg jkojsTypes.StartExecRequest) error {
 	to := trimer(b)
 	os.WriteFile("test.json", to, 0660)
 
-	_ = dCli.c.ContainerRemove(ctx, dCli.container.ID, types.ContainerRemoveOptions{
+	err = json.Unmarshal(to, arg)
+	if err != nil {
+		lib.Logger.Sugar().Errorf("JSONのパースに失敗: %v", err.Error())
+		return err
+	}
+
+	err = dCli.c.ContainerRemove(ctx, dCli.container.ID, types.ContainerRemoveOptions{
 		RemoveVolumes: true,
 		RemoveLinks:   false,
 		Force:         true,
 	})
+	if err != nil {
+		return err
+		// ToDo: ERR-LOG吐く
+	}
 
 	return nil
 }
