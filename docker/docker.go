@@ -1,11 +1,11 @@
 package docker
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
 	"io"
-	"os"
 	"strconv"
 	"time"
 
@@ -74,7 +74,7 @@ func (dCli *cli) containerCreate(arg jkojsTypes.StartExecRequest) error {
 	PidsLimit := int64(512)
 
 	res, err := dCli.c.ContainerCreate(ctx, &container.Config{
-		Image:           "24abd",
+		Image:           "456f",
 		NetworkDisabled: true, // ネットワークを切る
 		// Cmd:             []string{"tail", "-f", "/dev/null"},
 		Cmd: []string{"/jkworker", "-lang", arg.Lang, "-id", arg.ProblemID}, // 実行する時のコマンド
@@ -150,12 +150,22 @@ func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Bu
 	if err != nil {
 		panic(err)
 	}
-	b, _ := io.ReadAll(f)
-	// 要らないデータがあるので取り除く
-	to := trimer(b)
-	os.WriteFile("test.json", to, 0660)
 
-	err = json.Unmarshal(to, arg)
+	var out []byte
+	reader := tar.NewReader(f)
+	for {
+		h, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if h.Name == "out.json" {
+			out, _ = io.ReadAll(reader)
+			break
+		}
+	}
+
+	err = json.Unmarshal(out, arg)
 	if err != nil {
 		lib.Logger.Sugar().Errorf("JSONのパースに失敗: %v", err.Error())
 		return err
