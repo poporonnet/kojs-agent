@@ -45,6 +45,7 @@ type StartExecResponse struct {
 
 // CaseResult ケースごとのステータス
 type CaseResult struct {
+	CaseID      string `json:"caseID"`     // ケースID
 	Output      string `json:"output"`     // プログラム出力
 	ExitStatus  int    `json:"exitStatus"` // 終了コード
 	Duration    int    `json:"duration"`   // 実行時間
