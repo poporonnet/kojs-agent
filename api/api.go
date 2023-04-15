@@ -31,5 +31,6 @@ func handler(c echo.Context) error {
 		SubmissionID: req.SubmissionID,
 	}
 	docker.Exec(req, &res)
+	res.SubmissionID = req.SubmissionID
 	return c.JSON(http.StatusAccepted, res)
 }

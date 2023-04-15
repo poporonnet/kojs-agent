@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/mct-joken/jkojs-agent/lib"
 	"github.com/mct-joken/jkojs-agent/types"
 )
 
@@ -65,7 +64,6 @@ func preparePacking(req types.StartExecRequest) types.TarFileDirectoryConfig {
 		Path: types.LANGUAGE[req.Lang],
 		File: []byte(req.Code),
 	}
-	lib.Logger.Sugar().Debugf("%v", programFile)
 	config.Payload = append(config.Payload, programFile)
 
 	// 問題ごとの実行時設定を取る
