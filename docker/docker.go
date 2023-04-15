@@ -74,11 +74,10 @@ func (dCli *cli) containerCreate(arg jkojsTypes.StartExecRequest) error {
 	PidsLimit := int64(512)
 
 	res, err := dCli.c.ContainerCreate(ctx, &container.Config{
-		Image:           "eb94",
-		NetworkDisabled: true, // ネットワークを切る
-		// Cmd:             []string{"tail", "-f", "/dev/null"},
-		Cmd: []string{"/jkworker", "-lang", arg.Lang, "-id", arg.ProblemID}, // 実行する時のコマンド
-		Tty: false,                                                          // Falseにしておく
+		Image:           lib.Config.ID,
+		NetworkDisabled: true,                                                           // ネットワークを切る
+		Cmd:             []string{"/jkworker", "-lang", arg.Lang, "-id", arg.ProblemID}, // 実行する時のコマンド
+		Tty:             false,                                                          // Falseにしておく
 	}, &container.HostConfig{
 		AutoRemove:  false,  // これをtrueにすると実行結果が取れなくなる
 		NetworkMode: "none", // ネットワークにつながらないようにする

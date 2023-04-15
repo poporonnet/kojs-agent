@@ -1,5 +1,9 @@
 package types
 
+type Config struct {
+	ID string `yaml:"imageID"`
+}
+
 type StartExecRequest struct {
 	SubmissionID string      `json:"submissionID"`
 	ProblemID    string      `json:"problemID"`

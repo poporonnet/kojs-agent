@@ -5,6 +5,7 @@ go 1.19
 require github.com/labstack/echo v3.3.10+incompatible
 
 require (
+	github.com/go-yaml/yaml v2.1.0+incompatible // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
