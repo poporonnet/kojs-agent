@@ -6,6 +6,10 @@ import (
 )
 
 func main() {
+	err := lib.LoadConfig()
+	if err != nil {
+		panic(err)
+	}
 	lib.InitLogger()
 	api.StartServer()
 }

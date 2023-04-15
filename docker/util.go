@@ -38,11 +38,6 @@ func packSourceAndCases(conf types.TarFileDirectoryConfig) (bytes.Buffer, error)
 		writer.Write(v.File)
 	}
 
-	// f, _ := os.OpenFile("test.tar", os.O_RDWR|os.O_CREATE, 0666)
-	// a, _ := io.ReadAll(&tarFile)
-	// f.Write(a)
-	// f.Close()
-
 	return tarFile, nil
 }
 
