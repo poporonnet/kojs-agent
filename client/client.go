@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,25 +12,55 @@ import (
 	"time"
 )
 
-func GetNewTask() (*Task, error) {
+func GetNewTask() (Task, error) {
 	resp, err := http.Get("http://localhost:3060/api/v2/submissions/tasks")
 	if err != nil {
-		return nil, err
+		return Task{}, err
 	}
 	if resp.StatusCode != 200 {
-		return nil, errors.New("no task to execute")
+		fmt.Println(resp.StatusCode)
+		return Task{}, errors.New("no task to execute")
 	}
 
 	d, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return Task{}, err
 	}
 	data := Task{}
 	err = json.Unmarshal(d, &data)
 	if err != nil {
-		return nil, err
+		return Task{}, err
 	}
-	return &data, nil
+	return data, nil
+}
+
+func NotifyTaskFinished(t types.StartExecResponse) error {
+	results := make([]CreateSubmissionResults, len(t.Results))
+	for i, v := range t.Results {
+		results[i] = CreateSubmissionResults{
+			CaseName:   v.CaseID,
+			Output:     v.Output,
+			ExitStatus: v.ExitStatus,
+			Duration:   v.Duration,
+			Usage:      v.MemoryUsage,
+		}
+	}
+	b := Request{
+		SubmissionID:        t.SubmissionID,
+		ProblemID:           t.ProblemID,
+		LanguageType:        t.LanguageType,
+		CompilerMessage:     t.CompilerMessage,
+		CompileErrorMessage: t.CompileErrorMessage,
+		Results:             results,
+	}
+	req, _ := json.Marshal(b)
+	a := bytes.NewBuffer(req)
+	_, err := http.Post("http://localhost:3060/api/v2/submissions/tasks", "application/json", a)
+	if err != nil {
+		return err
+	}
+	//body, _ := io.ReadAll(resp.Body)
+	return nil
 }
 
 func StartExec(task Task) error {
@@ -55,8 +86,9 @@ func StartExec(task Task) error {
 	// SubmissionIDだけ空になるのでここで代入しておく
 	res := &types.StartExecResponse{SubmissionID: task.ID}
 	docker.Exec(req, res)
-	fmt.Printf("%+#v\n", res)
-	return nil
+	res.SubmissionID = task.ID
+	fmt.Printf("%+#v\n", *res)
+	return NotifyTaskFinished(*res)
 }
 
 func AutoFetcher() {
@@ -77,12 +109,15 @@ func AutoFetcher() {
 				task, err := GetNewTask()
 				if err != nil {
 					fmt.Println(err)
+					return
 				}
-				err = StartExec(*task)
+				err = StartExec(task)
 				if err != nil {
 					fmt.Println(err)
+					return
 				}
 			}()
+			continue
 		}
 	}
 }
@@ -104,4 +139,21 @@ type Cases struct {
 type Config struct {
 	TimeLimit   int `json:"timeLimit"`
 	MemoryLimit int `json:"memoryLimit"`
+}
+
+type Request struct {
+	SubmissionID        string                    `json:"submissionID"`
+	ProblemID           string                    `json:"problemID"`
+	LanguageType        string                    `json:"languageType"`
+	CompilerMessage     string                    `json:"compilerMessage"`
+	CompileErrorMessage string                    `json:"compileErrorMessage"`
+	Results             []CreateSubmissionResults `json:"results"`
+}
+
+type CreateSubmissionResults struct {
+	CaseName   string `json:"caseName"`
+	Output     string `json:"output"`
+	ExitStatus int    `json:"exitStatus"`
+	Duration   int    `json:"duration"`
+	Usage      int    `json:"usage"`
 }
