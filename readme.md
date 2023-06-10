@@ -1,5 +1,5 @@
-# JKOJS-Agent
-JKOJSのWorkerを管理する部分です.
+# KOJS-Agent
+KOJSのWorkerを管理する部分です.
 
 ## KOJSv3からの変更
 - コンテナにコードの他にテストケースを渡すように
@@ -8,45 +8,7 @@ JKOJSのWorkerを管理する部分です.
     - コード実行時の安全性が上がりました
 - APIでテストケースを受け取るように
     - KOJSv3ではできなかったコードテストが可能になりました
-
-## APIリファレンス
-- POST `/run`
-    - コードを実行します.
-### リクエスト
-```json
-{
-  "submissionID": "123123456",
-  "problemID": "112233",
-  "lang": "Clang++",
-  "code": "I2luY2x1ZGUgPGlvc3RyZWFtPgoKdXNpbmcgbmFtZXNwYWNlIHN0ZDsKCmludCBtYWluKCkgewogICAgY291dCA8PCAiSGVsbG8gV29ybGQgQysrIiA8PCBlbmRsOwogICAgcmV0dXJuIDA7Cn0K",
-  "cases": [
-    {
-      "name": "test.txt",
-      "file": "SGVsbG8gV29ybGQgQysr"
-    }
-  ],
-  "config": {
-    "timeLimit": 10,
-    "memoryLimit": 512
-  }
-}
-```
-
-### レスポンス
-```json
-{
-  "submissionID": "",
-  "problemID": "112233",
-  "languageType": "Clang++",
-  "compilerMessage": "",
-  "compileErrorMessage": "",
-  "results": [
-    {
-      "output": "Hello World C++\n",
-      "exitStatus": 0,
-      "duration": 2,
-      "usage": 1019
-    }
-  ]
-}
-```
+## KOJSv5(JK-OJS)からの変更
+- APIを廃止し、バックエンドの情報を定期的に取得するように
+  - 並列化のためにキューを別途立てる必要がなくなりました
+  - 実行〜結果の返却にかかる時間が短くなりました
