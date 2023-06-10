@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/mct-joken/jkojs-agent/api"
+	"github.com/mct-joken/jkojs-agent/client"
 	"github.com/mct-joken/jkojs-agent/lib"
 )
 
@@ -11,5 +11,5 @@ func main() {
 		panic(err)
 	}
 	lib.InitLogger()
-	api.StartServer()
+	client.AutoFetcher()
 }
