@@ -83,7 +83,7 @@ func (m WorkerManager) createContainer(ctx context.Context, arg manager.StartWor
 		return "", errors.New("image id is not found")
 	}
 
-	command := []string{"/home/worker/ojs-worker", "-lang", arg.Lang, "-id", arg.ProblemID, "-p"}
+	command := []string{"/home/worker/ojs-worker", "-lang", arg.Lang.ToString(), "-id", arg.ProblemID, "-p"}
 	res, err := m.cli.ContainerCreate(ctx, &container.Config{
 		Image:           lib.Config.ID,
 		NetworkDisabled: true,    // ネットワークを切る

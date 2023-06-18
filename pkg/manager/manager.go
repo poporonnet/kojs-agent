@@ -1,6 +1,9 @@
 package manager
 
-import "context"
+import (
+	"context"
+	"github.com/mct-joken/jkojs-agent/pkg/types"
+)
 
 type WorkerManager interface {
 	// Start ワーカーを開始し、結果を受け取る
@@ -30,12 +33,12 @@ type CaseResult struct {
 
 // StartWorkerArgs ワーカー実行に必要な情報
 type StartWorkerArgs struct {
-	SubmissionID string      `json:"submissionID"`
-	ProblemID    string      `json:"problemID"`
-	Lang         string      `json:"lang"`
-	Code         string      `json:"code"`
-	Cases        []ExecCases `json:"cases"`
-	Config       ExecConfig  `json:"config"`
+	SubmissionID string         `json:"submissionID"`
+	ProblemID    string         `json:"problemID"`
+	Lang         types.LangCode `json:"lang"`
+	Code         string         `json:"code"`
+	Cases        []ExecCases    `json:"cases"`
+	Config       ExecConfig     `json:"config"`
 }
 
 type ExecCases struct {

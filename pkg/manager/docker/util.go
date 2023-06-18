@@ -65,7 +65,7 @@ func preparePacking(req manager.StartWorkerArgs) types.TarFileDirectoryConfig {
 
 	// ソースコードを詰める
 	programFile := types.TarFilePayload{
-		Path: types.LANGUAGE[req.Lang],
+		Path: types.LANGUAGE[req.Lang.ToString()],
 		File: []byte(req.Code),
 	}
 	config.Payload = append(config.Payload, programFile)

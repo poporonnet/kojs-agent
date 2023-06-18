@@ -10,6 +10,7 @@ import (
 	dockerClient "github.com/docker/docker/client"
 	"github.com/mct-joken/jkojs-agent/pkg/manager"
 	"github.com/mct-joken/jkojs-agent/pkg/manager/docker"
+	"github.com/mct-joken/jkojs-agent/pkg/types"
 	"io"
 	"net/http"
 	"time"
@@ -75,11 +76,14 @@ func StartExec(task Task, mng manager.WorkerManager) error {
 			File: []byte(v.Data),
 		}
 	}
-
+	lang, err := types.NewLangCode(task.Lang)
+	if err != nil {
+		return err
+	}
 	req := manager.StartWorkerArgs{
 		SubmissionID: task.ID,
 		ProblemID:    task.ProblemID,
-		Lang:         task.Lang,
+		Lang:         lang,
 		Code:         task.Code,
 		Cases:        cases,
 		Config: manager.ExecConfig{

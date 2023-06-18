@@ -1,26 +1,9 @@
 package types
 
+import "errors"
+
 type Config struct {
 	ID string `yaml:"imageID"`
-}
-
-type StartExecRequest struct {
-	SubmissionID string      `json:"submissionID"`
-	ProblemID    string      `json:"problemID"`
-	Lang         string      `json:"lang"`
-	Code         string      `json:"code"`
-	Cases        []ExecCases `json:"cases"`
-	Config       ExecConfig  `json:"config"`
-}
-
-type ExecCases struct {
-	Name string `json:"name"`
-	File []byte `json:"file"`
-}
-
-type ExecConfig struct {
-	TimeLimit   int `json:"timeLimit"`
-	MemoryLimit int `json:"memoryLimit"`
 }
 
 // コードとテストケースをWorkerに送るときの構造体
@@ -32,19 +15,6 @@ type TarFileDirectoryConfig struct {
 type TarFilePayload struct {
 	File []byte
 	Path string
-}
-
-// ここより下の2つはWorkerと共通
-// ExecuteStatus 提出ごとのステータス
-type StartExecResponse struct {
-	SubmissionID string `json:"submissionID"` // 提出ID
-	ProblemID    string `json:"problemID"`    // 問題ID
-	LanguageType string `json:"languageType"` // 言語/処理系
-
-	CompilerMessage     string `json:"compilerMessage"`     // コンパイラが出力した警告など
-	CompileErrorMessage string `json:"compileErrorMessage"` // コンパイルエラー
-
-	Results []CaseResult `json:"results"` // ケースごとのステータス
 }
 
 // CaseResult ケースごとのステータス
@@ -66,6 +36,80 @@ var LANGUAGE = map[string]string{
 	"Go":      "./test/main.go",
 	"Python3": "./test/main.py",
 }
+
+type LangCode struct {
+	code int
+}
+
+func (c LangCode) Code() int {
+	return c.code
+}
+
+func (c LangCode) ToString() string {
+	switch c.code {
+	case GCC:
+		return "GCC"
+	case Clang:
+		return "Clang"
+	case GXX:
+		return "G++"
+	case ClangXX:
+		return "Clang++"
+	case Ruby:
+		return "Ruby"
+	case Go:
+		return "Go"
+	case Python3:
+		return "Python3"
+	default:
+		return ""
+	}
+}
+
+func NewLangCode(code string) (LangCode, error) {
+	switch code {
+	case "GCC":
+		return LangCode{
+			code: GCC,
+		}, nil
+	case "Clang":
+		return LangCode{
+			code: Clang,
+		}, nil
+	case "G++":
+		return LangCode{
+			code: GXX,
+		}, nil
+	case "Clang++":
+		return LangCode{
+			code: ClangXX,
+		}, nil
+	case "Ruby":
+		return LangCode{
+			code: Ruby,
+		}, nil
+	case "Go":
+		return LangCode{
+			code: Go,
+		}, nil
+	case "Python3":
+		return LangCode{
+			code: Python3,
+		}, nil
+	default:
+		return LangCode{}, errors.New("no such lang")
+	}
+}
+
+const (
+	GCC = iota
+	Clang
+	GXX
+	ClangXX
+	Ruby
+	Go
+	Python3
+)
 
 // ProblemConfig 問題ごとの設定
 type ProblemConfig struct {
