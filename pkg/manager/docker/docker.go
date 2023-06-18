@@ -2,11 +2,12 @@ package docker
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mct-joken/jkojs-agent/pkg/lib"
+	"github.com/mct-joken/jkojs-agent/pkg/manager"
 	"io"
 	"strconv"
 	"time"
@@ -14,52 +15,48 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/mct-joken/jkojs-agent/lib"
-	jkojsTypes "github.com/mct-joken/jkojs-agent/types"
 )
 
-type cli struct {
-	c         *client.Client
-	container container.ContainerCreateCreatedBody
+type WorkerManager struct {
+	cli *client.Client
 }
 
-func newDockerClient() cli {
-	nclient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+func NewWorkerManager(c *client.Client) *WorkerManager {
+	return &WorkerManager{cli: c}
+}
+
+func (m WorkerManager) Start(ctx context.Context, args manager.StartWorkerArgs) (manager.WorkerResponse, error) {
+	tarFile, err := m.prepareFiles(args)
 	if err != nil {
-		panic(err)
 	}
 
-	return cli{c: nclient}
+	containerID, err := m.createContainer(ctx, args)
+	if err != nil {
+		fmt.Println(err)
+		return manager.WorkerResponse{}, err
+	}
+	res, err := m.startContainer(tarFile, containerID)
+	if err != nil {
+		lib.Logger.Sugar().Errorf("コンテナ起動に失敗: %v", err)
+		return manager.WorkerResponse{}, err
+	}
+	return res, nil
 }
 
-func Exec(req jkojsTypes.StartExecRequest, res *jkojsTypes.StartExecResponse) {
-	c := newDockerClient()
-
+func (m WorkerManager) prepareFiles(req manager.StartWorkerArgs) (io.Reader, error) {
 	err := decodeSourceCode(&req)
 	if err != nil {
 		fmt.Println(err)
-		return
-	}
-
-	err = c.containerCreate(req)
-	if err != nil {
-		fmt.Println(err)
-		return
+		return nil, err
 	}
 
 	cfg := preparePacking(req)
 	tarFile, err := packSourceAndCases(cfg)
 	if err != nil {
-		// ToDo: エラーログ
 		lib.Logger.Sugar().Errorf("tarファイルに纏められませんでした: %s", err.Error())
-		return
+		return nil, err
 	}
-
-	err = c.containerStart(res, tarFile)
-	if err != nil {
-		lib.Logger.Sugar().Errorf("コンテナ起動に失敗: %v", err)
-		return
-	}
+	return &tarFile, nil
 }
 
 /*
@@ -75,20 +72,19 @@ func Exec(req jkojsTypes.StartExecRequest, res *jkojsTypes.StartExecResponse) {
 	9. 終わったらコンテナを削除 ok
 */
 
-func (dCli *cli) containerCreate(arg jkojsTypes.StartExecRequest) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-
+// createContainer Dockerコンテナを作成
+func (m WorkerManager) createContainer(ctx context.Context, arg manager.StartWorkerArgs) (string, error) {
 	f := false
 	swappness := int64(0)
 	PidsLimit := int64(512)
 	//fmt.Println([]string{"/jkworker", "-lang", arg.Lang, "-id", arg.ProblemID})
 	if lib.Config.ID == "" {
-		fmt.Println("no image")
-		return errors.New("image id is not found")
+		fmt.Println("no image id")
+		return "", errors.New("image id is not found")
 	}
+
 	command := []string{"/home/worker/ojs-worker", "-lang", arg.Lang, "-id", arg.ProblemID, "-p"}
-	res, err := dCli.c.ContainerCreate(ctx, &container.Config{
+	res, err := m.cli.ContainerCreate(ctx, &container.Config{
 		Image:           lib.Config.ID,
 		NetworkDisabled: true,    // ネットワークを切る
 		Cmd:             command, // 実行する時のコマンド
@@ -114,27 +110,28 @@ func (dCli *cli) containerCreate(arg jkojsTypes.StartExecRequest) error {
 	}, nil, nil, "")
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return "", err
 	}
-	dCli.container = res
-	return nil
+	return res.ID, nil
 }
 
-func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Buffer) error {
+// startContainer コンテナを起動
+func (m WorkerManager) startContainer(codes io.Reader, containerID string) (manager.WorkerResponse, error) {
 	// コンテナにファイルを送る
-	err := dCli.c.CopyToContainer(context.Background(), dCli.container.ID, "/home/worker", &codes, types.CopyToContainerOptions{})
+	err := m.cli.CopyToContainer(context.Background(), containerID, "/home/worker", codes, types.CopyToContainerOptions{})
 	if err != nil {
 		lib.Logger.Sugar().Errorf("コンテナにファイルを送れませんでした: %v", err.Error())
-		return err
+		return manager.WorkerResponse{}, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	// ToDo: ここのオプションをちゃんと指定する
-	err = dCli.c.ContainerStart(ctx, dCli.container.ID, types.ContainerStartOptions{})
+	err = m.cli.ContainerStart(ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
 		lib.Logger.Sugar().Errorf("コンテナの起動に失敗しました: %v", err)
+		return manager.WorkerResponse{}, err
 	}
 	//defer func() {
 	//	err = dCli.c.ContainerRemove(ctx, dCli.container.ID, types.ContainerRemoveOptions{
@@ -148,19 +145,19 @@ func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Bu
 	//	}
 	//}()
 
-	statusCh, errCh := dCli.c.ContainerWait(ctx, dCli.container.ID, container.WaitConditionNotRunning)
+	statusCh, errCh := m.cli.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
 
 	select {
 	case err := <-errCh:
 		if err != nil {
 			lib.Logger.Sugar().Errorf("コンテナ実行中にエラーが発生しました: %v", err.Error())
-			return err
+			return manager.WorkerResponse{}, err
 		}
 	case <-statusCh:
 	}
 
 	// workerの実行結果を取ってくる
-	f, _, err := dCli.c.CopyFromContainer(ctx, dCli.container.ID, "/home/worker/out.json")
+	f, _, err := m.cli.CopyFromContainer(ctx, containerID, "/home/worker/out.json")
 	if err != nil {
 		panic(err)
 	}
@@ -179,11 +176,12 @@ func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Bu
 		}
 	}
 
-	err = json.Unmarshal(out, arg)
+	res := manager.WorkerResponse{}
+	err = json.Unmarshal(out, &res)
 	if err != nil {
 		lib.Logger.Sugar().Errorf("JSONのパースに失敗: %v", err.Error())
-		return err
+		return manager.WorkerResponse{}, err
 	}
 
-	return nil
+	return res, nil
 }

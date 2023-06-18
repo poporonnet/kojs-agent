@@ -6,13 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/mct-joken/jkojs-agent/lib"
+	"github.com/mct-joken/jkojs-agent/pkg/lib"
+	"github.com/mct-joken/jkojs-agent/pkg/manager"
+	"github.com/mct-joken/jkojs-agent/pkg/types"
 	"time"
-
-	"github.com/mct-joken/jkojs-agent/types"
 )
 
-func decodeSourceCode(arg *types.StartExecRequest) error {
+func decodeSourceCode(arg *manager.StartWorkerArgs) error {
 	enc, err := base64.StdEncoding.DecodeString(arg.Code)
 	if err != nil {
 		lib.Logger.Sugar().Error(err, arg.Code)
@@ -51,7 +51,7 @@ func packSourceAndCases(conf types.TarFileDirectoryConfig) (bytes.Buffer, error)
 }
 
 // tarにまとめるファイルを構造体に書き込む
-func preparePacking(req types.StartExecRequest) types.TarFileDirectoryConfig {
+func preparePacking(req manager.StartWorkerArgs) types.TarFileDirectoryConfig {
 	config := types.TarFileDirectoryConfig{}
 
 	// ケースファイルを詰める

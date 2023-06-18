@@ -23,6 +23,6 @@ EOF
 WORKDIR /home/worker
 COPY --from=Builder /go/src/jkojs-worker/ojs-worker ./ojs-worker
 RUN <<EOF
-apt-get update && apt-get install -y build-essential
+apt-get update && apt-get install -y build-essential clang
 EOF
 USER worker

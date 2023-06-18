@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/mct-joken/jkojs-agent/client"
-	"github.com/mct-joken/jkojs-agent/lib"
+	dockerClient "github.com/docker/docker/client"
+	"github.com/mct-joken/jkojs-agent/pkg/client"
+	lib2 "github.com/mct-joken/jkojs-agent/pkg/lib"
+	"github.com/mct-joken/jkojs-agent/pkg/manager/docker"
 )
 
 func Start(imageID, code, langID string) {
-	lib.InitLogger()
-	lib.Config.ID = imageID
+	lib2.InitLogger()
+	lib2.Config.ID = imageID
 	task := client.Task{
 		ID:        "200",
 		ProblemID: "110",
@@ -37,7 +39,13 @@ func Start(imageID, code, langID string) {
 			MemoryLimit: 512000,
 		},
 	}
-	err := client.StartExec(task)
+	nclient, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+	mng := docker.NewWorkerManager(nclient)
+
+	err = client.StartExec(task, mng)
 	if err != nil {
 		fmt.Println(err)
 		return

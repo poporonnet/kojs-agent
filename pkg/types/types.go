@@ -62,7 +62,7 @@ var LANGUAGE = map[string]string{
 	"Clang":   "./test/main.c",
 	"G++":     "./test/main.cpp",
 	"Clang++": "./test/main.cpp",
-	"Ruby":    "./built/main.rb", // ToDo: 決め打ちやめる
+	"Ruby":    "./test/main.rb",
 	"Go":      "./test/main.go",
 	"Python3": "./test/main.py",
 }

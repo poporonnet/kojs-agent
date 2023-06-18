@@ -2,7 +2,7 @@ package lib
 
 import (
 	"github.com/go-yaml/yaml"
-	"github.com/mct-joken/jkojs-agent/types"
+	"github.com/mct-joken/jkojs-agent/pkg/types"
 	"os"
 )
 

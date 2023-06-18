@@ -3,7 +3,8 @@ package docker
 import (
 	"archive/tar"
 	"encoding/base64"
-	"github.com/mct-joken/jkojs-agent/types"
+	"github.com/mct-joken/jkojs-agent/pkg/manager"
+	"github.com/mct-joken/jkojs-agent/pkg/types"
 	"gotest.tools/v3/assert"
 	"io"
 	"testing"
@@ -11,13 +12,13 @@ import (
 
 func Test_decodeSourceCode(t *testing.T) {
 	encoded := base64.StdEncoding.EncodeToString([]byte("Hello world"))
-	d := &types.StartExecRequest{
+	d := &manager.StartWorkerArgs{
 		SubmissionID: "0",
 		ProblemID:    "0",
 		Lang:         "Go",
 		Code:         encoded,
 		Cases:        nil,
-		Config:       types.ExecConfig{},
+		Config:       manager.ExecConfig{},
 	}
 	_ = decodeSourceCode(d)
 	assert.Equal(t, "Hello world", d.Code)

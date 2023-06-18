@@ -2,12 +2,14 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Code-Hex/dd"
-	"github.com/mct-joken/jkojs-agent/docker"
-	"github.com/mct-joken/jkojs-agent/types"
+	dockerClient "github.com/docker/docker/client"
+	"github.com/mct-joken/jkojs-agent/pkg/manager"
+	"github.com/mct-joken/jkojs-agent/pkg/manager/docker"
 	"io"
 	"net/http"
 	"time"
@@ -36,7 +38,7 @@ func GetNewTask() (Task, error) {
 	return data, nil
 }
 
-func NotifyTaskFinished(t types.StartExecResponse) error {
+func NotifyTaskFinished(t manager.WorkerResponse) error {
 	results := make([]CreateSubmissionResults, len(t.Results))
 	for i, v := range t.Results {
 		results[i] = CreateSubmissionResults{
@@ -65,35 +67,42 @@ func NotifyTaskFinished(t types.StartExecResponse) error {
 	return nil
 }
 
-func StartExec(task Task) error {
-	cases := make([]types.ExecCases, len(task.Cases))
+func StartExec(task Task, mng manager.WorkerManager) error {
+	cases := make([]manager.ExecCases, len(task.Cases))
 	for i, v := range task.Cases {
-		cases[i] = types.ExecCases{
+		cases[i] = manager.ExecCases{
 			Name: v.Name,
 			File: []byte(v.Data),
 		}
 	}
 
-	req := types.StartExecRequest{
+	req := manager.StartWorkerArgs{
 		SubmissionID: task.ID,
 		ProblemID:    task.ProblemID,
 		Lang:         task.Lang,
 		Code:         task.Code,
 		Cases:        cases,
-		Config: types.ExecConfig{
+		Config: manager.ExecConfig{
 			TimeLimit:   task.Config.TimeLimit,
 			MemoryLimit: task.Config.MemoryLimit,
 		},
 	}
-	// SubmissionIDだけ空になるのでここで代入しておく
-	res := &types.StartExecResponse{SubmissionID: task.ID}
-	docker.Exec(req, res)
+
+	res, err := mng.Start(context.Background(), req)
+	if err != nil {
+		return err
+	}
 	res.SubmissionID = task.ID
-	fmt.Println(*res)
-	return NotifyTaskFinished(*res)
+	fmt.Println(dd.Dump(res))
+	return NotifyTaskFinished(res)
 }
 
 func AutoFetcher() {
+	nclient, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+	mng := docker.NewWorkerManager(nclient)
 	tick := time.NewTicker(500 * time.Millisecond)
 	fmt.Println("start fetching...")
 	lock := false
@@ -113,7 +122,7 @@ func AutoFetcher() {
 					fmt.Println(err)
 					return
 				}
-				err = StartExec(task)
+				err = StartExec(task, mng)
 				if err != nil {
 					fmt.Println(err)
 					return
