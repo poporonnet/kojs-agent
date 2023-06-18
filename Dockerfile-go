@@ -1,0 +1,39 @@
+FROM golang:1.19.3-alpine AS build
+WORKDIR /go/src
+
+ENV GO111MODULE=on
+COPY jkojs-worker/go.mod jkojs-worker/go.sum ./
+RUN go mod download
+
+COPY jkojs-worker /jkojs-worker
+WORKDIR /jkojs-worker
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o jkworker -ldflags "-s -w" && cp ./jkworker /jkworker
+
+FROM golang:1.20.5-bullseye AS run
+
+WORKDIR /
+RUN <<EOF
+useradd worker
+mkdir -p /home/worker/
+mkdir -p /home/worker/.cache
+mkdir -p /home/worker/.cache/go-build
+chmod -R 777 /home/worker/
+chown -R worker:worker /home/worker/
+EOF
+
+
+ENV GO111MODULE=on
+RUN <<EOF
+mkdir /home/worker/work
+chmod 777 /home/worker/work
+mkdir /home/worker/built
+chmod 777 /home/worker/built
+touch /home/worker/out.json
+chmod 666 /home/worker/out.json
+ln /home/worker/out.json /out.json
+EOF
+
+COPY --from=build /jkworker /jkworker
+
+USER worker

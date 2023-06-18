@@ -63,6 +63,8 @@ var LANGUAGE = map[string]string{
 	"G++":     "./test/main.cpp",
 	"Clang++": "./test/main.cpp",
 	"Ruby":    "./built/main.rb", // ToDo: 決め打ちやめる
+	"Go":      "./test/main.go",
+	"Python3": "./test/main.py",
 }
 
 // ProblemConfig 問題ごとの設定

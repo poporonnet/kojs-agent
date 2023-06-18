@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"github.com/mct-joken/jkojs-agent/lib"
 	"time"
 
 	"github.com/mct-joken/jkojs-agent/types"
@@ -13,6 +15,7 @@ import (
 func decodeSourceCode(arg *types.StartExecRequest) error {
 	enc, err := base64.StdEncoding.DecodeString(arg.Code)
 	if err != nil {
+		lib.Logger.Sugar().Error(err, arg.Code)
 		return err
 	}
 	arg.Code = string(enc)
@@ -24,7 +27,9 @@ func packSourceAndCases(conf types.TarFileDirectoryConfig) (bytes.Buffer, error)
 	// ローカルにファイルを作りたくないのでメモリ上に持つ
 	var tarFile bytes.Buffer
 	writer := tar.NewWriter(&tarFile)
-	defer writer.Close()
+	defer func() {
+		_ = writer.Close()
+	}()
 
 	for _, v := range conf.Payload {
 		if err := writer.WriteHeader(&tar.Header{
@@ -35,7 +40,11 @@ func packSourceAndCases(conf types.TarFileDirectoryConfig) (bytes.Buffer, error)
 		}); err != nil {
 			return tarFile, err
 		}
-		writer.Write(v.File)
+		_, err := writer.Write(v.File)
+		if err != nil {
+			fmt.Println(err)
+			return bytes.Buffer{}, err
+		}
 	}
 
 	return tarFile, nil

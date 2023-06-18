@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Code-Hex/dd"
 	"github.com/mct-joken/jkojs-agent/docker"
 	"github.com/mct-joken/jkojs-agent/types"
 	"io"
@@ -13,7 +14,7 @@ import (
 )
 
 func GetNewTask() (Task, error) {
-	resp, err := http.Get("http://localhost:3060/api/v2/submissions/tasks")
+	resp, err := http.Get("https://ojs.laminne33569.net/api/v2/submissions/tasks")
 	if err != nil {
 		return Task{}, err
 	}
@@ -31,6 +32,7 @@ func GetNewTask() (Task, error) {
 	if err != nil {
 		return Task{}, err
 	}
+	fmt.Println(dd.Dump(data))
 	return data, nil
 }
 
@@ -55,11 +57,11 @@ func NotifyTaskFinished(t types.StartExecResponse) error {
 	}
 	req, _ := json.Marshal(b)
 	a := bytes.NewBuffer(req)
-	_, err := http.Post("http://localhost:3060/api/v2/submissions/tasks", "application/json", a)
+	_, err := http.Post("https://ojs.laminne33569.net/api/v2/submissions/tasks", "application/json", a)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
-	//body, _ := io.ReadAll(resp.Body)
 	return nil
 }
 
@@ -87,7 +89,7 @@ func StartExec(task Task) error {
 	res := &types.StartExecResponse{SubmissionID: task.ID}
 	docker.Exec(req, res)
 	res.SubmissionID = task.ID
-	fmt.Printf("%+#v\n", *res)
+	fmt.Println(*res)
 	return NotifyTaskFinished(*res)
 }
 
@@ -117,7 +119,6 @@ func AutoFetcher() {
 					return
 				}
 			}()
-			continue
 		}
 	}
 }

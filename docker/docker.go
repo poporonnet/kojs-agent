@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"time"
@@ -33,9 +35,17 @@ func newDockerClient() cli {
 func Exec(req jkojsTypes.StartExecRequest, res *jkojsTypes.StartExecResponse) {
 	c := newDockerClient()
 
-	decodeSourceCode(&req)
+	err := decodeSourceCode(&req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	c.containerCreate(req)
+	err = c.containerCreate(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	cfg := preparePacking(req)
 	tarFile, err := packSourceAndCases(cfg)
@@ -47,7 +57,7 @@ func Exec(req jkojsTypes.StartExecRequest, res *jkojsTypes.StartExecResponse) {
 
 	err = c.containerStart(res, tarFile)
 	if err != nil {
-		lib.Logger.Sugar().Errorf("コンテナ起動に失敗: %v", err.Error())
+		lib.Logger.Sugar().Errorf("コンテナ起動に失敗: %v", err)
 		return
 	}
 }
@@ -72,12 +82,17 @@ func (dCli *cli) containerCreate(arg jkojsTypes.StartExecRequest) error {
 	f := false
 	swappness := int64(0)
 	PidsLimit := int64(512)
-
+	//fmt.Println([]string{"/jkworker", "-lang", arg.Lang, "-id", arg.ProblemID})
+	if lib.Config.ID == "" {
+		fmt.Println("no image")
+		return errors.New("image id is not found")
+	}
+	command := []string{"/home/worker/ojs-worker", "-lang", arg.Lang, "-id", arg.ProblemID, "-p"}
 	res, err := dCli.c.ContainerCreate(ctx, &container.Config{
 		Image:           lib.Config.ID,
-		NetworkDisabled: true,                                                           // ネットワークを切る
-		Cmd:             []string{"/jkworker", "-lang", arg.Lang, "-id", arg.ProblemID}, // 実行する時のコマンド
-		Tty:             false,                                                          // Falseにしておく
+		NetworkDisabled: true,    // ネットワークを切る
+		Cmd:             command, // 実行する時のコマンド
+		Tty:             false,   // Falseにしておく
 	}, &container.HostConfig{
 		AutoRemove:  false,  // これをtrueにすると実行結果が取れなくなる
 		NetworkMode: "none", // ネットワークにつながらないようにする
@@ -98,16 +113,16 @@ func (dCli *cli) containerCreate(arg jkojsTypes.StartExecRequest) error {
 		},
 	}, nil, nil, "")
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	dCli.container = res
-
 	return nil
 }
 
 func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Buffer) error {
 	// コンテナにファイルを送る
-	err := dCli.c.CopyToContainer(context.Background(), dCli.container.ID, "/", &codes, types.CopyToContainerOptions{})
+	err := dCli.c.CopyToContainer(context.Background(), dCli.container.ID, "/home/worker", &codes, types.CopyToContainerOptions{})
 	if err != nil {
 		lib.Logger.Sugar().Errorf("コンテナにファイルを送れませんでした: %v", err.Error())
 		return err
@@ -117,21 +132,21 @@ func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Bu
 	defer cancel()
 
 	// ToDo: ここのオプションをちゃんと指定する
-	if err := dCli.c.ContainerStart(ctx, dCli.container.ID, types.ContainerStartOptions{}); err != nil {
-		lib.Logger.Sugar().Errorf("コンテナの起動に失敗しました: %v", err.Error())
-		panic(err)
+	err = dCli.c.ContainerStart(ctx, dCli.container.ID, types.ContainerStartOptions{})
+	if err != nil {
+		lib.Logger.Sugar().Errorf("コンテナの起動に失敗しました: %v", err)
 	}
-	defer func() {
-		err = dCli.c.ContainerRemove(ctx, dCli.container.ID, types.ContainerRemoveOptions{
-			RemoveVolumes: true,
-			RemoveLinks:   false,
-			Force:         true,
-		})
-		if err != nil {
-			return
-			// ToDo: ERR-LOG吐く
-		}
-	}()
+	//defer func() {
+	//	err = dCli.c.ContainerRemove(ctx, dCli.container.ID, types.ContainerRemoveOptions{
+	//		RemoveVolumes: true,
+	//		RemoveLinks:   false,
+	//		Force:         true,
+	//	})
+	//	if err != nil {
+	//		return
+	//		// ToDo: ERR-LOG吐く
+	//	}
+	//}()
 
 	statusCh, errCh := dCli.c.ContainerWait(ctx, dCli.container.ID, container.WaitConditionNotRunning)
 
@@ -145,7 +160,7 @@ func (dCli cli) containerStart(arg *jkojsTypes.StartExecResponse, codes bytes.Bu
 	}
 
 	// workerの実行結果を取ってくる
-	f, _, err := dCli.c.CopyFromContainer(ctx, dCli.container.ID, "/out.json")
+	f, _, err := dCli.c.CopyFromContainer(ctx, dCli.container.ID, "/home/worker/out.json")
 	if err != nil {
 		panic(err)
 	}
