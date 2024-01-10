@@ -7,7 +7,7 @@ COPY jkojs-worker ./jkojs-worker
 WORKDIR ./jkojs-worker
 RUN CGO_ENABLED=0 GOOS=linux go build -o ojs-worker -ldflags "-s -w"
 
-FROM debian:bullseye AS Runner
+FROM debian:bookworm AS Runner
 
 RUN <<EOF
 useradd worker
