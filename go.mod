@@ -5,11 +5,11 @@ go 1.19
 require (
 	github.com/Code-Hex/dd v1.1.0
 	github.com/go-yaml/yaml v2.1.0+incompatible
-	gotest.tools/v3 v3.4.0
+	gotest.tools/v3 v3.5.1
 )
 
 require (
-	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
