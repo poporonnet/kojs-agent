@@ -7,7 +7,7 @@ COPY jkojs-worker ./jkojs-worker
 WORKDIR ./jkojs-worker
 RUN CGO_ENABLED=0 GOOS=linux go build -o ojs-worker -ldflags "-s -w"
 
-FROM python:3.10-bullseye AS Runner
+FROM python:3.12-bullseye AS Runner
 
 RUN <<EOF
 useradd worker
