@@ -1,4 +1,4 @@
-FROM golang:1.19.3-alpine AS Builder
+FROM golang:1.22.1-alpine AS Builder
 WORKDIR /go/src
 
 ENV GO111MODULE=on
@@ -7,7 +7,7 @@ COPY jkojs-worker ./jkojs-worker
 WORKDIR ./jkojs-worker
 RUN CGO_ENABLED=0 GOOS=linux go build -o worker -ldflags "-s -w"
 
-FROM golang:1.20.5-bullseye AS Runner
+FROM golang:1.22.1-bullseye AS Runner
 
 RUN <<EOF
 useradd worker
