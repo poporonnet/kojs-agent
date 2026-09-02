@@ -1,4 +1,4 @@
-FROM golang:1.19.3-alpine AS Builder
+FROM golang:1.27.1-alpine AS Builder
 WORKDIR /go/src
 
 ENV GO111MODULE=on
