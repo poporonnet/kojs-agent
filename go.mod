@@ -3,7 +3,7 @@ module github.com/mct-joken/jkojs-agent
 go 1.19
 
 require (
-	github.com/Code-Hex/dd v1.1.0
+	github.com/Code-Hex/dd v1.3.0
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	gotest.tools/v3 v3.4.0
 )
